@@ -1,0 +1,43 @@
+global proc shelf_SR_ProblemOne () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 37
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "JSON Skeleton Import/Export" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "JSON Skeleton Import/Export" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "json SK" 
+        -overlayLabelColor 0.79064 0.79064 0.79064 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "MayaPreferenceDialogIcon_100.png" 
+        -image1 "MayaPreferenceDialogIcon_100.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "'''''''''''''''''''''''''''''''''''''''''''''''''''\nCopyright 2022 Keven Fazio\n'''''''''''''''''''''''''''''''''''''''''''''''''''\n\nimport maya.cmds as cmds\nimport json\n\nclass JSON(object):\n        \n    #constructor\n    def __init__(self):\n        self.size = (500, 500)\n        self.window = \"JSON\"\n        self.title = \"Skeleton JSON Import/Export\"\n        self.instructions = \"\\nChoose to Import or Export a JSON file of the selected joints with their Tranform Attributes.\\nBegin by selecting the Root joint in the hierarchy.\"\n        self.browserFilter = \"*.json\"\n            \n        # close old window is open\n        if cmds.window(self.window, exists = True):\n            cmds.deleteUI(self.window, window=True)\n            \n        #create new window\n        self.window = cmds.window(self.window, title=self.title, widthHeight=self.size)\n        \n        cmds.columnLayout( adjustableColumn = True, columnAttach=('both', 5), rowSpacing=10)\n        cmds.text(self.instructions)\n        cmds.separator(height=20)\n        cmds.button(label=\"Import JSON\", command=self.importBtn)\n        cmds.button(label=\"Export JSON\", command=self.exportBtn)\n        self.errorText = cmds.textFieldGrp(visible=False, adjustableColumn=1)\n\n        #display new window\n        cmds.showWindow()        \n    \n    #import button    \n    def importBtn(self, *args):\n        #try that a joint is selected\n        try:\n            selectedJointRoot = cmds.joint(q=True, n=True)\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"Please select a root joint and try again.\")\n            return\n            \n        #get filepath from user\n        try:\n            path = cmds.fileDialog2(fileMode=1, fileFilter=self.browserFilter, dialogStyle=2)\n            importFilePath = path[0]\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"No import file selected.\")\n            return\n        \n        #try to open file\n        try:\n            with open(importFilePath, 'r') as f:\n                data = json.load(f)\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"Import file path not valid.\")\n            return                 \n        \n        #setting the attributes        \n        def set_data(data):\n            joints = cmds.ls(dagObjects=True, allPaths=True, selection=True, type=\"joint\")\n                       \n            for j in joints:\n                #Translate\n                cmds.setAttr(j+'.translateX', data[j][\"Translate\"][0])\n                cmds.setAttr(j+'.translateY', data[j][\"Translate\"][1])\n                cmds.setAttr(j+'.translateZ', data[j][\"Translate\"][2])\n                #Rotate\n                cmds.setAttr(j+'.rotateX', data[j]['Rotate'][0])\n                cmds.setAttr(j+'.rotateY', data[j]['Rotate'][1])\n                cmds.setAttr(j+'.rotateZ', data[j]['Rotate'][2])        \n                #Scale\n                cmds.setAttr(j+'.scaleX', data[j]['Scale'][0])\n                cmds.setAttr(j+'.scaleY', data[j]['Scale'][1])\n                cmds.setAttr(j+'.scaleZ', data[j]['Scale'][2])\n                #Shear\n                cmds.setAttr(j+'.shearXY', data[j]['Shear'][0])\n                cmds.setAttr(j+'.shearXZ', data[j]['Shear'][1])\n                cmds.setAttr(j+'.shearYZ', data[j]['Shear'][2])\n                #Rotate Order\n                cmds.setAttr(j+'.rotateOrder', data[j]['Rotate Order'][0])\n                #Rotate Axis\n                cmds.setAttr(j+'.rotateAxisX', data[j]['Rotate Axis'][0])\n                cmds.setAttr(j+'.rotateAxisY', data[j]['Rotate Axis'][1])\n                cmds.setAttr(j+'.rotateAxisZ', data[j]['Rotate Axis'][2])        \n\n        #set selected joints\n        try:\n            set_data(data)\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"***Selected root not found in file.***\")\n            return\n        \n        #success message\n        cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"File IMPORTED successfully!\")\n    \n    #export button    \n    def exportBtn(self, *args):\n        #try that a joint is selected\n        try:\n            selectedJointRoot = cmds.joint(q=True, n=True)\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"Please select a root joint and try again.\")\n            return\n        \n        #create tree of joints   \n        def hierarchyTree(tree):\n            joints = cmds.ls(dagObjects=True, allPaths=True, selection=True, type=\"joint\")\n            \n            for j in joints:\n                t = [cmds.getAttr(j+'.translateX'), cmds.getAttr(j+'.translateY'), cmds.getAttr(j+'.translateZ')]\n                r = [cmds.getAttr(j+'.rotateX'), cmds.getAttr(j+'.rotateY'), cmds.getAttr(j+'.rotateZ')]\n                s = [cmds.getAttr(j+'.scaleX'), cmds.getAttr(j+'.scaleY'), cmds.getAttr(j+'.scaleZ')]\n                sh = [cmds.getAttr(j+'.shearXY') ,cmds.getAttr(j+'.shearXZ'), cmds.getAttr(j+'.shearYZ')]\n                ro = [cmds.getAttr(j+'.rotateOrder')]\n                ra = [cmds.getAttr(j+'.rotateAxisX'), cmds.getAttr(j+'.rotateAxisY'), cmds.getAttr(j+'.rotateAxisZ')]\n                tree[j] = {\"Translate\": t, \"Rotate\": r, \"Scale\": s, \"Shear\": sh, \"Rotate Order\": ro, \"Rotate Axis\": ra}\n        \n        #get filepath from user\n        try:\n            path = cmds.fileDialog2(fileFilter=self.browserFilter, dialogStyle=2)\n            exportFilePath = path[0]\n            print (exportFilePath)\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"No export file selected.\")\n            return\n        \n        #create Dict of joints and fill it\n        hierarchy_tree = {}\n        hierarchyTree(hierarchy_tree)\n        \n        #try to open and write to file\n        try:\n            with open(exportFilePath, 'w+') as p:\n                json.dump(hierarchy_tree, p, indent = 4)\n        except:\n            cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"Export file path not valid\")\n            return\n        \n        #success message                  \n        cmds.textFieldGrp(self.errorText, visible=True, e=True, text=\"File EXPORTED successfully!\")\n                                   \nmyWindow = JSON()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 
